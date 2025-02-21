@@ -200,6 +200,8 @@ export class Node extends BaseNode implements CustomSerializable {
     // local rotation in euler angles, maintained here so that rotation angles could be greater than 360 degree.
     @serializable
     protected _euler = new Vec3();
+    /**是否合批根节点 */
+    public isBatchRoot:boolean;
 
     private _dirtyFlagsPri = TransformBit.NONE; // does the world transform need to update?
 

@@ -53,7 +53,7 @@ class PointerEventDispatcher implements IEventDispatcher {
     private _processorListToAdd: NodeEventProcessor[] = [];
     private _processorListToRemove: NodeEventProcessor[] = [];
 
-    constructor () {
+    constructor() {
         // @ts-expect-error Property '_registerEventDispatcher' is private and only accessible within class 'Input'.
         input._registerEventDispatcher(this);
 
@@ -62,7 +62,7 @@ class PointerEventDispatcher implements IEventDispatcher {
         NodeEventProcessor.callbacksInvoker.on(DispatcherEventType.MARK_LIST_DIRTY, this._markListDirty, this);
     }
 
-    public dispatchEvent (event: Event): boolean {
+    public dispatchEvent(event: Event): boolean {
         const eventType = event.type as Input.EventType;
         if (touchEvents.includes(eventType)) {
             return this.dispatchEventTouch(event as EventTouch);
@@ -72,7 +72,7 @@ class PointerEventDispatcher implements IEventDispatcher {
         return true;
     }
 
-    public addPointerEventProcessor (pointerEventProcessor: NodeEventProcessor) {
+    public addPointerEventProcessor(pointerEventProcessor: NodeEventProcessor) {
         if (this._inDispatchCount === 0) {
             if (!this._pointerEventProcessorList.includes(pointerEventProcessor)) {
                 this._pointerEventProcessorList.push(pointerEventProcessor);
@@ -84,7 +84,7 @@ class PointerEventDispatcher implements IEventDispatcher {
         js.array.remove(this._processorListToRemove, pointerEventProcessor);
     }
 
-    public removePointerEventProcessor (pointerEventProcessor: NodeEventProcessor) {
+    public removePointerEventProcessor(pointerEventProcessor: NodeEventProcessor) {
         if (this._inDispatchCount === 0) {
             js.array.remove(this._pointerEventProcessorList, pointerEventProcessor);
             this._isListDirty = true;
@@ -94,77 +94,87 @@ class PointerEventDispatcher implements IEventDispatcher {
         js.array.remove(this._processorListToAdd, pointerEventProcessor);
     }
 
-    public dispatchEventMouse (eventMouse: EventMouse) {
+    public dispatchEventMouse(eventMouse: EventMouse) {
         this._inDispatchCount++;
-        this._sortPointerEventProcessorList();
-        const pointerEventProcessorList = this._pointerEventProcessorList;
-        const length = pointerEventProcessorList.length;
         let dispatchToNextEventDispatcher = true;
-        for (let i = 0; i < length; ++i) {
-            const pointerEventProcessor = pointerEventProcessorList[i];
-            if (pointerEventProcessor.isEnabled && pointerEventProcessor.shouldHandleEventMouse
-                // @ts-expect-error access private method
-                && pointerEventProcessor._handleEventMouse(eventMouse)) {
-                dispatchToNextEventDispatcher = false;
-                if (!eventMouse.preventSwallow) {
-                    break;
-                } else {
-                    eventMouse.preventSwallow = false;  // reset swallow state
-                }
-            }
-        }
-        if (--this._inDispatchCount <= 0) {
-            this._updatePointerEventProcessorList();
-        }
-        return dispatchToNextEventDispatcher;
-    }
-
-    public dispatchEventTouch (eventTouch: EventTouch) {
-        this._inDispatchCount++;
-        this._sortPointerEventProcessorList();
-        const pointerEventProcessorList = this._pointerEventProcessorList;
-        const length = pointerEventProcessorList.length;
-        const touch = eventTouch.touch!;
-        let dispatchToNextEventDispatcher = true;
-        for (let i = 0; i < length; ++i) {
-            const pointerEventProcessor = pointerEventProcessorList[i];
-            if (pointerEventProcessor.isEnabled && pointerEventProcessor.shouldHandleEventTouch) {
-                if (eventTouch.type === InputEventType.TOUCH_START) {
+        try {
+            this._sortPointerEventProcessorList();
+            const pointerEventProcessorList = this._pointerEventProcessorList;
+            const length = pointerEventProcessorList.length;
+            for (let i = 0; i < length; ++i) {
+                const pointerEventProcessor = pointerEventProcessorList[i];
+                if (pointerEventProcessor.isEnabled && pointerEventProcessor.shouldHandleEventMouse
                     // @ts-expect-error access private method
-                    if (pointerEventProcessor._handleEventTouch(eventTouch)) {
-                        pointerEventProcessor.claimedTouchIdList.push(touch.getID());
-                        dispatchToNextEventDispatcher = false;
-                        if (!eventTouch.preventSwallow) {
-                            break;
-                        } else {
-                            eventTouch.preventSwallow = false;  // reset swallow state
-                        }
-                    }
-                } else if (pointerEventProcessor.claimedTouchIdList.length > 0) {
-                    const index = pointerEventProcessor.claimedTouchIdList.indexOf(touch.getID());
-                    if (index !== -1) {
-                        // @ts-expect-error access private method
-                        pointerEventProcessor._handleEventTouch(eventTouch);
-                        if (eventTouch.type === InputEventType.TOUCH_END || eventTouch.type === InputEventType.TOUCH_CANCEL) {
-                            js.array.removeAt(pointerEventProcessor.claimedTouchIdList, index);
-                        }
-                        dispatchToNextEventDispatcher = false;
-                        if (!eventTouch.preventSwallow) {
-                            break;
-                        } else {
-                            eventTouch.preventSwallow = false;  // reset swallow state
-                        }
+                    && pointerEventProcessor._handleEventMouse(eventMouse)) {
+                    dispatchToNextEventDispatcher = false;
+                    if (!eventMouse.preventSwallow) {
+                        break;
+                    } else {
+                        eventMouse.preventSwallow = false;  // reset swallow state
                     }
                 }
             }
+        } catch (error) {
+            console.error(error);
         }
+      
         if (--this._inDispatchCount <= 0) {
             this._updatePointerEventProcessorList();
         }
         return dispatchToNextEventDispatcher;
     }
 
-    private _updatePointerEventProcessorList () {
+    public dispatchEventTouch(eventTouch: EventTouch) {
+        this._inDispatchCount++;
+        let dispatchToNextEventDispatcher = true;
+        try{
+            this._sortPointerEventProcessorList();
+            const pointerEventProcessorList = this._pointerEventProcessorList;
+            const length = pointerEventProcessorList.length;
+            const touch = eventTouch.touch!;
+            for (let i = 0; i < length; ++i) {
+                const pointerEventProcessor = pointerEventProcessorList[i];
+                if (pointerEventProcessor.isEnabled && pointerEventProcessor.shouldHandleEventTouch) {
+                    if (eventTouch.type === InputEventType.TOUCH_START) {
+                        // @ts-expect-error access private method
+                        if (pointerEventProcessor._handleEventTouch(eventTouch)) {
+                            pointerEventProcessor.claimedTouchIdList.push(touch.getID());
+                            dispatchToNextEventDispatcher = false;
+                            if (!eventTouch.preventSwallow) {
+                                break;
+                            } else {
+                                eventTouch.preventSwallow = false;  // reset swallow state
+                            }
+                        }
+                    } else if (pointerEventProcessor.claimedTouchIdList.length > 0) {
+                        const index = pointerEventProcessor.claimedTouchIdList.indexOf(touch.getID());
+                        if (index !== -1) {
+                            // @ts-expect-error access private method
+                            pointerEventProcessor._handleEventTouch(eventTouch);
+                            if (eventTouch.type === InputEventType.TOUCH_END || eventTouch.type === InputEventType.TOUCH_CANCEL) {
+                                js.array.removeAt(pointerEventProcessor.claimedTouchIdList, index);
+                            }
+                            dispatchToNextEventDispatcher = false;
+                            if (!eventTouch.preventSwallow) {
+                                break;
+                            } else {
+                                eventTouch.preventSwallow = false;  // reset swallow state
+                            }
+                        }
+                    }
+                }
+            }
+        }catch(error){
+            console.error(error);
+        }
+        
+        if (--this._inDispatchCount <= 0) {
+            this._updatePointerEventProcessorList();
+        }
+        return dispatchToNextEventDispatcher;
+    }
+
+    private _updatePointerEventProcessorList() {
         const listToAdd = this._processorListToAdd;
         const addLength = listToAdd.length;
         for (let i = 0; i < addLength; ++i) {
@@ -180,7 +190,7 @@ class PointerEventDispatcher implements IEventDispatcher {
         listToRemove.length = 0;
     }
 
-    private _sortPointerEventProcessorList () {
+    private _sortPointerEventProcessorList() {
         if (!this._isListDirty) {
             return;
         }
@@ -198,7 +208,7 @@ class PointerEventDispatcher implements IEventDispatcher {
         this._isListDirty = false;
     }
 
-    private _sortByPriority (p1: NodeEventProcessor, p2: NodeEventProcessor) {
+    private _sortByPriority(p1: NodeEventProcessor, p2: NodeEventProcessor) {
         const node1: Node = p1.node;
         const node2: Node = p2.node;
         if (!p2 || !node2 || !node2.activeInHierarchy || !node2._uiProps.uiTransformComp) {
@@ -235,7 +245,7 @@ class PointerEventDispatcher implements IEventDispatcher {
         return ex ? priority1 - priority2 : priority2 - priority1;
     }
 
-    private _markListDirty () {
+    private _markListDirty() {
         this._isListDirty = true;
     }
 }

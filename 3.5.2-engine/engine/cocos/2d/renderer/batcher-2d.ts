@@ -637,6 +637,48 @@ export class Batcher2D implements IBatcher {
         this._currMaterial = mat;
     }
 
+    //新增
+    private _batchRootDepth = 0
+    private _delayFillRenderers: Renderable2D[] = []
+    /**
+     * 按指定的depth渲染
+     * @param a 
+     * @param b 
+     * @returns 
+     */
+    private sortRenderFunc(a: Renderable2D, b: Renderable2D) {
+        return a.depth - b.depth
+    }
+    private customFillBuffers() {
+        let renders = this._delayFillRenderers
+        if (renders.length > 0) {
+            renders.sort(this.sortRenderFunc)
+            let render: Renderable2D
+            for (let i = 0, len = renders.length; i < len; i++) {
+                render = renders[i]
+                // Render assembler update logic
+                if (render.enabledInHierarchy) {
+                    render.updateAssembler(this);// for rendering
+                }
+                let uiProps = render.node._uiProps
+                if (uiProps.colorDirty) {
+                    if (!render.useVertexOpacity && render.renderData && render.renderData.vertexCount > 0) {
+                        let opacity = render && render.color ? render.color.a / 255 : 1;
+                        opacity *= uiProps.opacity;
+                        // HARD COUPLING
+                        updateOpacity(render.renderData, opacity);
+                        const buffer = render.renderData.getMeshBuffer();
+                        if (buffer) {
+                            buffer.setDirty();
+                        }
+                    }
+                    uiProps.colorDirty = false
+                }
+            }
+            renders.length = 0
+        }
+    }
+
     public walk (node: Node, level = 0) {
         if (!node.activeInHierarchy) {
             return;
@@ -645,32 +687,45 @@ export class Batcher2D implements IBatcher {
         const uiProps = node._uiProps;
         const render = uiProps.uiComp as Renderable2D;
 
-        // Save opacity
-        const parentOpacity = this._pOpacity;
-        let opacity = parentOpacity;
-        // TODO Always cascade ui property's local opacity before remove it
-        const selfOpacity = render && render.color ? render.color.a / 255 : 1;
-        this._pOpacity = opacity *= selfOpacity * uiProps.localOpacity;
-        // TODO Set opacity to ui property's opacity before remove it
-        // @ts-expect-error temporary force set, will be removed with ui property's opacity
-        uiProps._opacity = opacity;
-        if (uiProps.colorDirty) {
-            // Cascade color dirty state
-            this._opacityDirty++;
+
+        //新增
+        if (node.isBatchRoot) {
+            this.customFillBuffers();
+            this._batchRootDepth++;
         }
 
-        // Render assembler update logic
-        if (render && render.enabledInHierarchy) {
-            render.updateAssembler(this);
-        }
+         // TODO Always cascade ui property's local opacity before remove it
+         let opacity = render && render.color ? render.color.a / 255 : 1;
+         opacity *= uiProps.opacity;
+ 
+         let colorDirty = uiProps.colorDirty
+         if (colorDirty) {
+             // Cascade color dirty state
+             this._opacityDirty++;
+             uiProps.colorDirty = false
+         }
 
-        // Update cascaded opacity to vertex buffer
-        if (this._opacityDirty && render && !render.useVertexOpacity && render.renderData && render.renderData.vertexCount > 0) {
-            // HARD COUPLING
-            updateOpacity(render.renderData, opacity);
-            const buffer = render.renderData.getMeshBuffer();
-            if (buffer) {
-                buffer.setDirty();
+        //新增
+        if (render && this._batchRootDepth && !node.isBatchRoot) {  //mask要马上填充
+            //延迟填充数据
+            if (this._opacityDirty) {
+                uiProps.colorDirty = true
+            }
+            this._delayFillRenderers.push(render)
+        } else {
+            // Render assembler update logic
+            if (render && render.enabledInHierarchy) {
+                render.updateAssembler(this);
+            }
+
+            // Update cascaded opacity to vertex buffer
+            if (this._opacityDirty && render && !render.useVertexOpacity && render.renderData && render.renderData.vertexCount > 0) {
+                // HARD COUPLING
+                updateOpacity(render.renderData, opacity);
+                const buffer = render.renderData.getMeshBuffer();
+                if (buffer) {
+                    buffer.setDirty();
+                }
             }
         }
 
@@ -681,14 +736,16 @@ export class Batcher2D implements IBatcher {
             }
         }
 
-        if (uiProps.colorDirty) {
+        if (colorDirty) {
             // Reduce cascaded color dirty state
             this._opacityDirty--;
-            // Reset color dirty
-            uiProps.colorDirty = false;
         }
-        // Restore opacity
-        this._pOpacity = parentOpacity;
+
+        //新增
+        if (node.isBatchRoot) {
+            this.customFillBuffers();
+            this._batchRootDepth--;
+        }
         // Post render assembler update logic
         // ATTENTION: Will also reset colorDirty inside postUpdateAssembler
         if (render && render.enabledInHierarchy) {
