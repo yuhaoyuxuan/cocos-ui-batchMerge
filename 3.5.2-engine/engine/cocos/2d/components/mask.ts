@@ -365,6 +365,7 @@ export class Mask extends Renderable2D {
 
     public onEnable () {
         super.onEnable();
+        this.node.isBatchRoot = true;
         this._updateGraphics();
         this._enableGraphics();
     }
@@ -382,6 +383,7 @@ export class Mask extends Renderable2D {
 
     public onDisable () {
         super.onDisable();
+        this.node.isBatchRoot = false;
         this._disableGraphics();
     }
 

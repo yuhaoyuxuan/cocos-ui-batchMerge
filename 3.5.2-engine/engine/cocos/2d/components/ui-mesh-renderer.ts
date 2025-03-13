@@ -24,7 +24,7 @@
  THE SOFTWARE.
 */
 
-import { ccclass, help, executionOrder, menu, executeInEditMode } from 'cc.decorator';
+import { ccclass, help, executionOrder, menu, executeInEditMode, displayOrder, serializable } from 'cc.decorator';
 import { RenderableComponent } from '../../core/components/renderable-component';
 import { RenderPriority } from '../../core/pipeline/define';
 import { IBatcher } from '../renderer/i-batcher';
@@ -48,6 +48,20 @@ import { legacyCC } from '../../core/global-exports';
 @menu('UI/UIMeshRenderer')
 @executeInEditMode
 export class UIMeshRenderer extends Component {
+    @serializable
+    private _depth = 0;
+
+    @displayOrder(0)
+    public set depth(val) {
+        if(this._depth != val) {
+            this._depth = val
+        }
+    }
+
+    public get depth() {
+        return this._depth
+    }
+    
     public get modelComponent () {
         return this._modelComponent;
     }

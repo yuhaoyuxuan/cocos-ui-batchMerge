@@ -129,6 +129,10 @@ const reserveContentsForAllSyncablePrefabTag = Symbol('ReserveContentsForAllSync
 @ccclass('cc.Node')
 export class Node extends BaseNode implements CustomSerializable {
     /**
+     * 是否合批根节点 
+     * */
+    public isBatchRoot:boolean;
+    /**
      * @en Event types emitted by Node
      * @zh 节点可能发出的事件类型
      */

@@ -148,6 +148,26 @@ interface ISegment {
 @menu('2D/RichText')
 @executeInEditMode
 export class RichText extends Component {
+    @serializable
+    protected _depth = 0;
+    //新增
+    @displayOrder(-1)
+    public set depth(val) {
+        this._depth = val
+
+        let comp
+        for (let i = 0, len = this._segments.length; i < len; i++) {
+            comp = this._segments[i]?.comp
+            if (comp) {
+                comp.depth = val
+            }
+        }
+    }
+
+    public get depth() {
+        return this._depth
+    }
+
     /**
      * @en
      * Content string of RichText.
@@ -810,11 +830,16 @@ export class RichText extends Component {
             }
         }
 
+
         // set vertical alignments
         // because horizontal alignment is applied with line offsets in method "_updateRichTextPosition"
         const labelComp: Label = labelSegment.comp as Label;
         if (labelComp.verticalAlign !== this._verticalAlign) {
             labelComp.verticalAlign = this._verticalAlign;
+        }
+
+        if(labelComp) {
+            labelComp.depth = this._depth;
         }
 
         labelSegment.styleIndex = styleIndex;
@@ -942,6 +967,9 @@ export class RichText extends Component {
         } else {
             const segment = this._createImage(spriteFrame);
             const sprite = segment.comp;
+            if(sprite) {
+                sprite.depth = this._depth;
+            }
             switch (style.imageAlign) {
             case 'top':
                 segment.node._uiProps.uiTransformComp!.setAnchorPoint(0, 1);

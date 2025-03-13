@@ -26,7 +26,7 @@
 import { Renderable2D } from '../../2d/framework/renderable-2d';
 import { UITransform } from '../../2d/framework/ui-transform';
 import { warnID } from '../platform/debug';
-import { UIMeshRenderer } from '../../2d';
+import { UIMeshRenderer , UIOpacity} from '../../2d';
 
 /**
  * @en Node's UI properties abstraction
@@ -104,4 +104,16 @@ export class NodeUIProperties {
      * @deprecated since v3.4
      */
     public static markOpacityTree (node, isDirty = true) {}
+
+    
+    protected _uiOpacityComp: UIOpacity | null = null;
+    /**
+     * UIOpacity组件
+     */
+    get uiOpacityComp(): UIOpacity | null {
+        if(!this._uiOpacityComp) {
+            this._uiOpacityComp = this._node.getComponent('cc.UIOpacity')
+        }
+        return this._uiOpacityComp
+    }
 }

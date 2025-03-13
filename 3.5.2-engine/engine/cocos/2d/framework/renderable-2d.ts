@@ -113,6 +113,21 @@ export enum InstanceMaterialType {
 @executeInEditMode
 export class Renderable2D extends RenderableComponent {
     /**
+     * 深度 相同深度的同批次渲染
+     */
+    @displayOrder(-1)
+    public set depth(val) {
+        if (this._depth != val) {
+            this._depth = val
+        }
+    }
+
+    public get depth() {
+        return this._depth
+    }
+    @serializable
+    private _depth = 0;
+    /**
      * @en The blend factor enums
      * @zh 混合模式枚举类型
      * @see [[gfx.BlendFactor]]
@@ -265,6 +280,7 @@ export class Renderable2D extends RenderableComponent {
         this.node.on(NodeEventType.PARENT_CHANGED, this._colorDirty, this);
         this.updateMaterial();
         this._renderFlag = this._canRender();
+        this.CalculateFinalOpacity();
         this._colorDirty();
     }
 
@@ -502,6 +518,27 @@ export class Renderable2D extends RenderableComponent {
         if (this.renderData) {
             this.renderData.textureDirty = true;
         }
+    }
+
+     /**
+     * 计算最终的透明度，不包括自身颜色中的透明度
+     */
+     public CalculateFinalOpacity() {
+        if(!legacyCC.openMergeBatch){
+            return;
+        }
+        
+        let val = 1;
+        let node: Node | null = this.node;
+        while(node && node._uiProps) {
+            let uiOp = node._uiProps.uiOpacityComp;
+            if(uiOp?.enabled) {
+                val *= uiOp.opacity / 255;
+            }
+            node = node.parent
+        }
+        //@ts-expect-error
+        this.node._uiProps._opacity = val;
     }
 }
 
